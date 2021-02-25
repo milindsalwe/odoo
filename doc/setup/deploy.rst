@@ -109,9 +109,9 @@ in ``/etc/postgresql/9.5/main/pg_hba.conf`` set:
   host    all             all             192.168.1.0/24          md5
 
 in ``/etc/postgresql/9.5/main/postgresql.conf`` set:
-  
+
 .. code-block:: text
-  
+
   listen_addresses = 'localhost,192.168.1.2'
   port = 5432
   max_connections = 80
@@ -171,7 +171,7 @@ SSL Between Odoo and PostgreSQL
 -------------------------------
 
 Since Odoo 11.0, you can enforce ssl connection between Odoo and PostgreSQL.
-in Odoo the db_sslmode control the ssl security of the connection 
+in Odoo the db_sslmode control the ssl security of the connection
 with value choosed out of 'disable', 'allow', 'prefer', 'require', 'verify-ca'
 or 'verify-full'
 
@@ -210,7 +210,7 @@ memory size calculation
 -----------------------
 
 * We consider 20% of the requests are heavy requests, while 80% are simpler ones
-* A heavy worker, when all computed field are well designed, SQL requests are well designed, ... is estimated to consume around 1Go of RAM
+* A heavy worker, when all computed field are well designed, SQL requests are well designed, ... is estimated to consume around 1GB of RAM
 * A lighter worker, in the same scenario, is estimated to consume around 150MB of RAM
 
 Needed RAM = #worker * ( (light_worker_ratio * light_worker_ram_estimation) + (heavy_worker_ratio * heavy_worker_ram_estimation) )
@@ -273,12 +273,6 @@ just about any SSL termination proxy, but requires the following setup:
 * Your SSL termination proxy should also automatically redirect non-secure
   connections to the secure port
 
-.. warning::
-
-  In case you are using the Point of Sale module in combination with a `POSBox`_,
-  you must disable the HTTPS configuration for the route ``/pos/web`` to avoid
-  mixed-content errors.
-
 Configuration sample
 --------------------
 
@@ -302,27 +296,27 @@ in ``/etc/nginx/sites-enabled/odoo.conf`` set:
   upstream odoochat {
    server 127.0.0.1:8072;
   }
-  
+
   # http -> https
   server {
      listen 80;
      server_name odoo.mycompany.com;
      rewrite ^(.*) https://$host$1 permanent;
   }
-  
+
   server {
    listen 443;
    server_name odoo.mycompany.com;
    proxy_read_timeout 720s;
    proxy_connect_timeout 720s;
    proxy_send_timeout 720s;
-   
+
    # Add Headers for odoo proxy mode
    proxy_set_header X-Forwarded-Host $host;
    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
    proxy_set_header X-Forwarded-Proto $scheme;
    proxy_set_header X-Real-IP $remote_addr;
-   
+
    # SSL parameters
    ssl on;
    ssl_certificate /etc/ssl/nginx/server.crt;
@@ -331,7 +325,7 @@ in ``/etc/nginx/sites-enabled/odoo.conf`` set:
    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
    ssl_ciphers 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA';
    ssl_prefer_server_ciphers on;
-   
+
    # log
    access_log /var/log/nginx/odoo.access.log;
    error_log /var/log/nginx/odoo.error.log;
@@ -348,10 +342,10 @@ in ``/etc/nginx/sites-enabled/odoo.conf`` set:
    }
 
    # common gzip
-   gzip_types text/css text/less text/plain text/xml application/xml application/json application/javascript;
+   gzip_types text/css text/scss text/plain text/xml application/xml application/json application/javascript;
    gzip on;
   }
- 
+
 Odoo as a WSGI Application
 ==========================
 
@@ -496,6 +490,28 @@ security-related topics:
   machines than the production ones. And apply the same security precautions as for
   production.
 
+- If your public-facing Odoo server has access to sensitive internal network resources
+  or services (e.g. via a private VLAN), implement appropriate firewall rules to
+  protect those internal resources. This will ensure that the Odoo server cannot
+  be used accidentally (or as a result of malicious user actions) to access or disrupt
+  those internal resources.
+  Typically this can be done by applying an outbound default DENY rule on the firewall,
+  then only explicitly authorizing access to internal resources that the Odoo server
+  needs to access.
+  `Systemd IP traffic access control <http://0pointer.net/blog/ip-accounting-and-access-lists-with-systemd.html>`_
+  may also be useful to implement per-process network access control.
+
+- If your public-facing Odoo server is behind a Web Application Firewall, a load-balancer,
+  a transparent DDoS protection service (like CloudFlare) or a similar network-level
+  device, you may wish to avoid direct access to the Odoo system. It is generally
+  difficult to keep the endpoint IP addresses of your Odoo servers secret. For example
+  they can appear in web server logs when querying public systems, or in the headers
+  of emails posted from Odoo.
+  In such a situation you may want to configure your firewall so that the endpoints
+  are not accessible publicly except from the specific IP addresses of your WAF,
+  load-balancer or proxy service. Service providers like CloudFlare usually maintain
+  a public list of their IP address ranges for this purpose.
+
 - If you are hosting multiple customers, isolate customer data and files from each other
   using containers or appropriate "jail" techniques.
 
@@ -596,16 +612,23 @@ which will generate a 32 characters pseudorandom printable string.
 Supported Browsers
 ==================
 
-Odoo is supported by multiple browsers for each of its versions. No 
-distinction is made according to the browser version in order to be
-up-to-date. Odoo is supported on the current browser version. The list 
-of the supported browsers is the following:
+Odoo supports all the major desktop and mobile browsers available on the market,
+as long as they are supported by their publishers.
 
-- IE11,
-- Mozilla Firefox,
-- Google Chrome,
-- Safari,
+Here are the supported browsers:
+
+- Google Chrome
+- Mozilla Firefox
 - Microsoft Edge
+- Apple Safari
+
+.. warning:: Please make sure your browser is up-to-date and still supported by
+    its publisher before filing a bug report.
+
+
+.. note::
+
+    Since Odoo 13.0, ES6 is supported.  Therefore, IE support is dropped.
 
 
 .. [#different-machines]
@@ -624,16 +647,16 @@ of the supported browsers is the following:
     environment than over the internet.
 
 .. _regular expression: https://docs.python.org/3/library/re.html
-.. _ARP spoofing: http://en.wikipedia.org/wiki/ARP_spoofing
+.. _ARP spoofing: https://en.wikipedia.org/wiki/ARP_spoofing
 .. _Nginx termination example:
-    http://nginx.com/resources/admin-guide/nginx-ssl-termination/
+    https://nginx.com/resources/admin-guide/nginx-ssl-termination/
 .. _Nginx proxying example:
-    http://nginx.com/resources/admin-guide/reverse-proxy/
+    https://nginx.com/resources/admin-guide/reverse-proxy/
 .. _socat: http://www.dest-unreach.org/socat/
 .. _PostgreSQL connection settings:
 .. _listen to network interfaces:
-    http://www.postgresql.org/docs/9.6/static/runtime-config-connection.html
+    https://www.postgresql.org/docs/9.6/static/runtime-config-connection.html
 .. _use an SSH tunnel:
-    http://www.postgresql.org/docs/9.6/static/ssh-tunnels.html
-.. _WSGI: http://wsgi.readthedocs.org/
+    https://www.postgresql.org/docs/9.6/static/ssh-tunnels.html
+.. _WSGI: https://wsgi.readthedocs.org/
 .. _POSBox: https://www.odoo.com/page/point-of-sale-hardware#part_2
